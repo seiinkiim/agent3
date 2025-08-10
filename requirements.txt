@@ -6,3 +6,12 @@ langchain-text-splitters
 langchain-core
 sentence-transformers
 faiss-cp
+langchain-openai
+faiss-cpu
+sentence-transformers
+transformers
+torch
+huggingface-hub
+pandas
+scikit-learn
+numpy
