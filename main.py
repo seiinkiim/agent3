@@ -307,11 +307,9 @@ def generate_contextual_descriptions(user_question: str, rows: list[dict]) -> li
             text = (getattr(resp, "content", "") or "").strip()
             if not text:
                 text = base_desc  # 폴백
-            # 과도하게 길면 한 줄로 정리
             text = re.sub(r"\s+", " ", text)
             r = {**r, "desc": text}
         except Exception:
-            # 오류 시 원본 유지
             pass
         new_rows.append(r)
     return new_rows
@@ -321,21 +319,33 @@ for role, msg in st.session_state["messages"]:
     st.chat_message(role).write(msg)
 
 # --------------------------- 입력 ---------------------------
-# ✅ 후속질문 패널이 보이는 동안에는 입력창 비활성화
+# ✅ 후속질문 패널이 보이는 동안에는 입력창 완전 차단
 FOLLOWUP_ACTIVE = st.session_state["followup_step"] in (1, 2)
 
 user_input = None
 if st.session_state["selected_question"]:
+    # 버튼 선택만 허용
     user_input = st.session_state["selected_question"]
     st.session_state["selected_question"] = None
 else:
-    placeholder = (
-        "후속질문 버튼을 눌러주세요 (입력 비활성화)"
-        if FOLLOWUP_ACTIVE else "메시지를 입력해 주세요"
-    )
-    tmp = st.chat_input(placeholder, disabled=FOLLOWUP_ACTIVE)
-    if tmp:
-        user_input = tmp
+    if FOLLOWUP_ACTIVE:
+        # 시각적으로도 차단되도록 CSS 추가
+        st.markdown(
+            """
+            <style>
+            .stChatInput { pointer-events: none; opacity: 0.5; }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        # 비활성화된 입력창 렌더(키/클릭 모두 무시)
+        st.chat_input("후속질문 버튼을 눌러주세요 (입력 비활성화)", disabled=True, key="main_input")
+        # 어떤 값도 수집하지 않음
+        user_input = None
+    else:
+        tmp = st.chat_input("메시지를 입력해 주세요", key="main_input")
+        if tmp:
+            user_input = tmp
 
 # --------------------------- 응답 처리 ---------------------------
 if user_input:
