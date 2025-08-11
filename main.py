@@ -91,7 +91,6 @@ retriever = build_retriever(CSV_PATH)
 
 # --------------------------- 유틸 함수 ---------------------------
 def stream_text(text: str, delay: float = 0.015):
-    """단어 단위 스트리밍 출력 (LLM 아님, 로컬 텍스트용) — 마크다운 링크 지원"""
     ph = st.empty()
     buf = ""
     for chunk in re.split(r"(\s+)", text):  # 공백 보존
@@ -258,7 +257,6 @@ def rank_by_keywords(df: pd.DataFrame, keywords: list[str], exclude_keys: set[st
     return rows[:top_k]
 
 def rows_to_output(rows):
-    """dict 리스트 -> 최종 출력 문자열 (링크는 마크다운)"""
     return "\n".join(
         f"{i}. {r['brand']} {r['name']} | {r['price']} | {r['desc']} | {_md_link(r['url'], '구매링크')}"
         for i, r in enumerate(rows, start=1)
@@ -281,7 +279,6 @@ LLM_SYSTEM = (
 )
 
 def generate_contextual_descriptions(user_question: str, rows: list[dict]) -> list[dict]:
-    """선택된 제품 rows의 desc를 질문 맥락에 맞춰 1~2문장으로 재작성."""
     if not USE_LLM_DESC or LLM is None or not os.environ.get("OPENAI_API_KEY"):
         return rows
 
@@ -306,7 +303,7 @@ def generate_contextual_descriptions(user_question: str, rows: list[dict]) -> li
                                {"role": "user", "content": user_content}])
             text = (getattr(resp, "content", "") or "").strip()
             if not text:
-                text = base_desc  # 폴백
+                text = base_desc
             text = re.sub(r"\s+", " ", text)
             r = {**r, "desc": text}
         except Exception:
@@ -319,28 +316,23 @@ for role, msg in st.session_state["messages"]:
     st.chat_message(role).write(msg)
 
 # --------------------------- 입력 ---------------------------
-# ✅ 후속질문 패널이 보이는 동안에는 입력창 완전 차단
+def _hide_chat_input_css():
+    st.markdown(
+        "<style>div[data-testid='stChatInput']{display:none !important;}</style>",
+        unsafe_allow_html=True,
+    )
+
+# ✅ 후속질문 패널이 보이는 동안에는 입력창 자체를 렌더링하지 않음
 FOLLOWUP_ACTIVE = st.session_state["followup_step"] in (1, 2)
 
 user_input = None
 if st.session_state["selected_question"]:
-    # 버튼 선택만 허용
     user_input = st.session_state["selected_question"]
     st.session_state["selected_question"] = None
 else:
     if FOLLOWUP_ACTIVE:
-        # 시각적으로도 차단되도록 CSS 추가
-        st.markdown(
-            """
-            <style>
-            .stChatInput { pointer-events: none; opacity: 0.5; }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-        # 비활성화된 입력창 렌더(키/클릭 모두 무시)
-        st.chat_input("후속질문 버튼을 눌러주세요 (입력 비활성화)", disabled=True, key="main_input")
-        # 어떤 값도 수집하지 않음
+        _hide_chat_input_css()  # 혹시 남아있는 입력창도 즉시 숨김
+        # 입력창을 아예 호출하지 않음
         user_input = None
     else:
         tmp = st.chat_input("메시지를 입력해 주세요", key="main_input")
@@ -360,6 +352,7 @@ if user_input:
             stream_text(combined, delay=0.015)
         st.session_state["messages"].append(("assistant", combined))
         st.session_state["followup_step"] = 1
+        st.rerun()  # ▶ 패널이 바로 뜨는 턴에서 입력창 숨김
 
     else:
         # 0) 키워드 랭킹
@@ -393,7 +386,7 @@ if user_input:
         for r in rows:
             st.session_state["seen_products"].add(product_key(r["brand"], r["name"]))
 
-        # 4) 질문 맥락 맞춤 설명 생성 (LLM) ▶ desc 대체
+        # 4) LLM 요약 설명
         rows = generate_contextual_descriptions(user_input, rows)
 
         # 5) 출력
@@ -406,6 +399,7 @@ if user_input:
         # 6) 패널 단계 진행 및 종료 안내
         if st.session_state["followup_step"] == 1:
             st.session_state["followup_step"] = 2
+            st.rerun()  # ▶ 두 번째 패널도 즉시 반영
         elif st.session_state["followup_step"] == 2:
             st.session_state["followup_step"] = 3
             code = "8172"  # 🔒 인증번호를 항상 8172로 고정
