@@ -321,12 +321,19 @@ for role, msg in st.session_state["messages"]:
     st.chat_message(role).write(msg)
 
 # --------------------------- 입력 ---------------------------
+# ✅ 후속질문 패널이 보이는 동안에는 입력창 비활성화
+FOLLOWUP_ACTIVE = st.session_state["followup_step"] in (1, 2)
+
 user_input = None
 if st.session_state["selected_question"]:
     user_input = st.session_state["selected_question"]
     st.session_state["selected_question"] = None
 else:
-    tmp = st.chat_input("메시지를 입력해 주세요")
+    placeholder = (
+        "후속질문 버튼을 눌러주세요 (입력 비활성화)"
+        if FOLLOWUP_ACTIVE else "메시지를 입력해 주세요"
+    )
+    tmp = st.chat_input(placeholder, disabled=FOLLOWUP_ACTIVE)
     if tmp:
         user_input = tmp
 
