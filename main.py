@@ -134,8 +134,9 @@ def draw_random_products(n: int = 3) -> str:
         row = df_products.iloc[idx]
         st.session_state["seen_products"].add(product_key(row["브랜드"], row["제품명"]))
         link_md = _md_link(row["구매링크"], "구매링크")
+        # ✅ 가격 뒤 줄바꿈(마크다운 강제 개행: 공백 2개 + \n)
         lines.append(
-            f"{i}. {row['브랜드']} {row['제품명']} | {row['가격']} | {row['제품설명']} | {link_md}"
+            f"{i}. {row['브랜드']} {row['제품명']} | {row['가격']} |  \n {row['제품설명']} | {link_md}"
         )
     return "\n".join(lines)
 
@@ -257,8 +258,9 @@ def rank_by_keywords(df: pd.DataFrame, keywords: list[str], exclude_keys: set[st
     return rows[:top_k]
 
 def rows_to_output(rows):
+    # ✅ 가격 뒤 줄바꿈(공백 2개 + \n) 적용
     return "\n".join(
-        f"{i}. {r['brand']} {r['name']} | {r['price']} | {r['desc']} | {_md_link(r['url'], '구매링크')}"
+        f"{i}. {r['brand']} {r['name']} | {r['price']} |  \n {r['desc']} | {_md_link(r['url'], '구매링크')}"
         for i, r in enumerate(rows, start=1)
     )
 
