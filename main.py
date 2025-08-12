@@ -340,15 +340,14 @@ else:
 
 # --------------------------- 응답 처리 ---------------------------
 if user_input:
-    # 🔽 첫 요청인지 판별: "운동화 추천해줘" && 아직 시작 전(step==0)
+    # 사용자 말풍선은 항상 표시 (첫 추천 포함)
+    st.chat_message("user").write(user_input)
+    st.session_state["messages"].append(("user", user_input))
+
+    # 첫 요청인지 판별
     is_first_trigger = (user_input.strip() == "운동화 추천해줘" and st.session_state["followup_step"] == 0)
 
-    # ✅ 첫 요청이면 사용자 말풍선/메시지 기록을 표시/저장하지 않음
-    if not is_first_trigger:
-        st.chat_message("user").write(user_input)
-        st.session_state["messages"].append(("user", user_input))
-
-    # 첫 요청: 무작위 3개만 출력(프리페이스 제거)
+    # 첫 요청: 프리페이스 제거하고 추천만 출력
     if is_first_trigger:
         random_reco = draw_random_products(3)
         combined = random_reco  # ✅ 프리페이스 제거
